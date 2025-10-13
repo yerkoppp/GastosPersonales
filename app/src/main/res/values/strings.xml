@@ -1,0 +1,5 @@
+<resources>
+    <string name="app_name">GastosPersonales</string>
+    <string name="btn_add_expense">Agregar gasto</string>
+    <string name="lc_add_expense">No hay gastos.\n¡Agrega un nuevo gasto arriba!</string>
+</resources>
