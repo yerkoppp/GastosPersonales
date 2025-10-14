@@ -34,14 +34,39 @@ class ExpenseViewModel: ViewModel() {
         }
     }
 
+    //Función para actualizar la fecha del nuevo gasto
+    fun updateNewExpenseDate(newDate: String){
+        _uiState.update { currentState ->
+            currentState.copy(newExpenseDate = newDate)
+        }
+    }
+
+    fun updateNewExpenseDate(expenseToUpdate: Expense, newDate: String){
+        _uiState.update { currentState ->
+            val updatedExpenses = currentState.expenses.map{ existingExpense ->
+                if(existingExpense.id == expenseToUpdate.id){
+                    existingExpense.copy(date = newDate)
+                } else {
+                    existingExpense
+                }
+            }
+            currentState.copy(expenses = updatedExpenses)
+        }
+    }
+
     fun saveExpense(){
         _uiState.update { currentState ->
             val name = currentState.newExpenseName.trim()
             val amount = currentState.newExpenseAmount
             val category = currentState.newExpenseCategory
+            val date = currentState.newExpenseDate
 
             if(name.isNotBlank() && !amount.isNaN()){
-                val newExpense = Expense (name = name, amount = amount, category = category)
+                val newExpense = Expense (
+                    name = name,
+                    amount = amount,
+                    category = category,
+                    date = date)
 
                 val updatedExpenses = listOf(newExpense) + currentState.expenses
 
@@ -49,7 +74,8 @@ class ExpenseViewModel: ViewModel() {
                     expenses = updatedExpenses,
                     newExpenseName = "",
                     newExpenseAmount= 0.00,
-                    newExpenseCategory = currentState.categories.first()
+                    newExpenseDate = LocalDateTime.now().format(DateTimeFormatter.ofPattern("dd/MM/yyyy")),
+                    newExpenseCategory = currentState.categories.first(),
                 )
             } else {
                 currentState

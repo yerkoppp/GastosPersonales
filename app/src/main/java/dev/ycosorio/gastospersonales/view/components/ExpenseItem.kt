@@ -25,6 +25,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import dev.ycosorio.gastospersonales.model.Expense
+import dev.ycosorio.gastospersonales.viewmodel.ExpenseViewModel
 import java.time.Instant
 import java.time.LocalDateTime
 import java.time.ZoneId
@@ -35,24 +36,14 @@ import java.util.Locale
 @Composable
 fun ExpenseItem (
     modifier: Modifier = Modifier,
-    expense: Expense = Expense(
-        id = "",
-        name = "",
-        date = LocalDateTime.now().format(DateTimeFormatter.ofPattern("dd/MM/yyyy")),
-        amount = 0.00,
-        category = "",
-        isRecurring = false
-    ),
-    onToggleCompletion: (Expense) -> Unit = {}
+    expense: Expense,
+    onToggleCompletion: (Expense) -> Unit,
+    onDateChange: (Expense, String) -> Unit
 ) {
 
     // Estado para controlar si el diálogo de fecha está visible
     var showDatePickerDialog by remember { mutableStateOf(false) }
 
-    // Estado para la fecha que se muestra en la UI. Inicialmente es la fecha del gasto.
-    var selectedDateText by remember { mutableStateOf(expense.date) }
-
-    val datePickerState = rememberDatePickerState()
 
     Card(
         modifier = modifier
@@ -97,7 +88,7 @@ fun ExpenseItem (
                 // El texto de la fecha es un botón para abrir el diálogo
                 TextButton(onClick = { showDatePickerDialog = true }) {
                     Text(
-                        text = selectedDateText,
+                        text = expense.date,
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Normal,
                     )
@@ -105,39 +96,14 @@ fun ExpenseItem (
             }
     }    // El diálogo del DatePicker ahora se define aquí
     if (showDatePickerDialog) {
-        DatePickerDialog(
-            onDismissRequest = { showDatePickerDialog = false },
-            confirmButton = {
-                TextButton(
-                    onClick = {
-                        showDatePickerDialog = false // Cierra el diálogo
+         CustomDatePickerDialog(
+             onDateSelected = {newDate ->
+                 onDateChange(expense, newDate)
+             },
+             onDismiss = {
+                 showDatePickerDialog = false
+             }
 
-                        val milisegundos = datePickerState.selectedDateMillis
-                        if (milisegundos != null) {
-                            val formateador = DateTimeFormatter
-                                .ofPattern("dd/MM/yyyy", Locale("es", "CL"))
-
-                            val nuevaFecha = Instant.ofEpochMilli(milisegundos)
-                                .atZone(ZoneId.systemDefault())
-                                .toLocalDate()
-                                .format(formateador)
-
-                            selectedDateText = nuevaFecha
-                            // Aquí deberías llamar a una función del ViewModel para guardar la nueva fecha
-                            // ej: onDateChange(expense, nuevaFecha)
-                        }
-                    }
-                ) {
-                    Text("Aceptar")
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = { showDatePickerDialog = false }) {
-                    Text("Cancelar")
-                }
-            }
-        ) {
-            DatePicker(state = datePickerState)
-        }
+         )
     }
 }

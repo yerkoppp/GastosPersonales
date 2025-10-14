@@ -86,8 +86,12 @@ fun ExpenseListScreen(
                         onDelete = { expenseToDelete -> expenseViewModel.removeExpense(expenseToDelete) }
                     ) { item ->
                         ExpenseItem(expense = item,
-                        onToggleCompletion = { expense ->
-                            expenseViewModel.toggleExpenseCompletion(expense) }
+                            onToggleCompletion = { expenseToToggle ->
+                                expenseViewModel.toggleExpenseCompletion(expenseToToggle)
+                            },
+                            onDateChange = { expenseToUpdate, newDate ->
+                                expenseViewModel.updateNewExpenseDate(expenseToUpdate,newDate)
+                            }
                         )
                     }
                 }
