@@ -110,8 +110,19 @@ class ExpenseViewModel: ViewModel() {
         val expenses: List<Expense> = emptyList(),
         val newExpenseName: String = "",
         val newExpenseAmount: Double = 0.00,
-        val categories: List<String> = listOf("Alimentación", "Transporte", "Ocio", "Ahorro", "Inversiones", "Gastos Básicos", "Otros"),
+        val categories: List<String> = listOf(
+            "🍔 Alimentación",
+            "🚌 Transporte",
+            "🎬 Ocio",
+            "🐷 Ahorro",
+            "📈 Inversiones",
+            "🧾 Gastos Básicos",
+            "🏷️ Otros"
+        ),
         val newExpenseCategory: String = categories.first(),
         val newExpenseDate: String = LocalDateTime.now().format(DateTimeFormatter.ofPattern("dd/MM/yyyy"))
-    )
+    ){
+        val totalExpenses: Double
+            get() = expenses.sumOf { it.amount }
+    }
 }

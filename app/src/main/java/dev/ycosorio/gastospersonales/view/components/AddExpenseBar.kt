@@ -1,176 +1,171 @@
 package dev.ycosorio.gastospersonales.view.components
 
-import androidx.compose.foundation.interaction.MutableInteractionSource
-import androidx.compose.foundation.interaction.collectIsPressedAsState
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.AttachMoney
 import androidx.compose.material.icons.filled.DateRange
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.DropdownMenuItem
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.ExposedDropdownMenuAnchorType
-import androidx.compose.material3.ExposedDropdownMenuBox
-import androidx.compose.material3.ExposedDropdownMenuDefaults
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.IconButtonDefaults
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.input.KeyboardCapitalization
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
-import dev.ycosorio.gastospersonales.R
-import dev.ycosorio.gastospersonales.ui.theme.shape
 import dev.ycosorio.gastospersonales.viewmodel.ExpenseViewModel
+import java.time.Instant
+import java.time.LocalDateTime
+import java.time.ZoneId
+import java.time.format.DateTimeFormatter
+import java.util.Locale
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AddExpenseBar(expenseViewModel: ExpenseViewModel, uiState: ExpenseViewModel.ExpenseUiState) {
 
-    var showDatePickerDialog by remember { mutableStateOf(false) }
     var expanded by remember { mutableStateOf(false) }
-
-    if (showDatePickerDialog) {
-        CustomDatePickerDialog(
-            onDateSelected = { newDate ->
-                expenseViewModel.updateNewExpenseDate(newDate)
-            },
-            onDismiss = {
-                showDatePickerDialog = false
-            }
-        )
-    }
+    var showDatePickerDialog by remember { mutableStateOf(false) }
+    val datePickerState = rememberDatePickerState()
 
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(12.dp),
-        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+            .padding(16.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 8.dp),
+        shape = MaterialTheme.shapes.large,
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
     ) {
         Column(
             modifier = Modifier.padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp) // Añade espacio vertical entre filas
+            verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            // --- PRIMERA FILA: Nombre y Total ---
-            Row(
+            val textFieldColors = OutlinedTextFieldDefaults.colors(
+                focusedBorderColor = MaterialTheme.colorScheme.primary,
+                unfocusedBorderColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f),
+                cursorColor = MaterialTheme.colorScheme.primary,
+                focusedLeadingIconColor = MaterialTheme.colorScheme.primary,
+                unfocusedLeadingIconColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
+                focusedTrailingIconColor = MaterialTheme.colorScheme.primary,
+                unfocusedTrailingIconColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+            )
+
+            OutlinedTextField(
                 modifier = Modifier.fillMaxWidth(),
+                value = uiState.newExpenseName,
+                onValueChange = { expenseViewModel.updateNewExpenseName(it) },
+                label = { Text("Nombre del gasto") },
+                singleLine = true,
+                keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Sentences),
+                colors = textFieldColors
+            )
+
+            Row(
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(8.dp) // Añade espacio entre campos
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                OutlinedTextField(
-                    modifier = Modifier.weight(1f),
-                    value = uiState.newExpenseName,
-                    onValueChange = { expenseViewModel.updateNewExpenseName(it) },
-                    label = { Text("Nombre del gasto") },
-                    singleLine = true
-                )
                 OutlinedTextField(
                     modifier = Modifier.weight(1f),
                     value = if (uiState.newExpenseAmount == 0.0) "" else uiState.newExpenseAmount.toString(),
                     onValueChange = { expenseViewModel.updateNewExpenseAmount(it) },
-                    label = { Text("Total") },
-                    singleLine = true
+                    label = { Text("Monto") },
+                    leadingIcon = { Icon(Icons.Default.AttachMoney, contentDescription = "Monto") },
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                    singleLine = true,
+                    colors = textFieldColors
+                )
+
+                // Campo de Fecha (no editable, abre el DatePicker)
+                OutlinedTextField(
+                    value = uiState.newExpenseDate,
+                    onValueChange = { /* No hacer nada */ },
+                    modifier = Modifier
+                        .weight(1f)
+                        .clickable { showDatePickerDialog = true },
+                    label = { Text("Fecha") },
+                    trailingIcon = { Icon(Icons.Default.DateRange, contentDescription = "Seleccionar Fecha") },
+                    readOnly = true,
+                    enabled = false, // Se deshabilita para que el clickable sea el único evento
+                    colors = OutlinedTextFieldDefaults.colors(
+                        disabledBorderColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f),
+                        disabledTextColor = MaterialTheme.colorScheme.onSurface,
+                        disabledTrailingIconColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
+                        disabledLabelColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+                    )
                 )
             }
 
-            // --- SEGUNDA FILA: Categoría y Fecha ---
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(8.dp) // Añade espacio entre campos
+            ExposedDropdownMenuBox(
+                expanded = expanded,
+                onExpandedChange = { expanded = !expanded }
             ) {
-                // Contenedor del Menú Desplegable
-                Box(modifier = Modifier.weight(1f)) {
-                    ExposedDropdownMenuBox(
-                        expanded = expanded,
-                        onExpandedChange = { expanded = !expanded }
-                    ) {
-                        OutlinedTextField(
-                            modifier = Modifier.menuAnchor(
-                                type = ExposedDropdownMenuAnchorType.PrimaryNotEditable,
-                                enabled = true
-                            ),
-                            readOnly = true,
-                            value = uiState.newExpenseCategory,
-                            onValueChange = {},
-                            label = { Text("Categoría") },
-                            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) }
-                        )
-                        ExposedDropdownMenu(
-                            expanded = expanded,
-                            onDismissRequest = { expanded = false }
-                        ) {
-                            uiState.categories.forEach { selectionOption ->
-                                DropdownMenuItem(
-                                    text = { Text(selectionOption) },
-                                    onClick = {
-                                        expenseViewModel.updateNewExpenseCategory(selectionOption)
-                                        expanded = false
-                                    }
-                                )
+                OutlinedTextField(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .menuAnchor(ExposedDropdownMenuAnchorType.PrimaryEditable, enabled = true),
+                    readOnly = true,
+                    value = uiState.newExpenseCategory,
+                    onValueChange = {},
+                    label = { Text("Categoría") },
+                    trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
+                    colors = textFieldColors
+                )
+                ExposedDropdownMenu(
+                    expanded = expanded,
+                    onDismissRequest = { expanded = false }
+                ) {
+                    uiState.categories.forEach { selectionOption ->
+                        DropdownMenuItem(
+                            text = { Text(selectionOption) },
+                            onClick = {
+                                expenseViewModel.updateNewExpenseCategory(selectionOption)
+                                expanded = false
                             }
-                        }
+                        )
                     }
                 }
-
-                // --- CAMPO DE FECHA CON BORDE (LA SOLUCIÓN) ---
-                val interactionSource = remember { MutableInteractionSource() }
-                val isPressed: Boolean by interactionSource.collectIsPressedAsState()
-                if (isPressed) {
-                    showDatePickerDialog = true
-                }
-                OutlinedTextField(
-                    modifier = Modifier.weight(1f),
-                    readOnly = true,
-                    value = uiState.newExpenseDate,
-                    onValueChange = {},
-                    label = { Text("Fecha") },
-                    trailingIcon = {
-                        Icon(
-                            imageVector = Icons.Default.DateRange,
-                            contentDescription = "Seleccionar Fecha"
-                        )
-                    },
-                    interactionSource = interactionSource
-                )
             }
 
-            // --- BOTÓN DE AÑADIR ---
-            Row(
+            Button(
+                onClick = { expenseViewModel.saveExpense() },
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(top = 8.dp),
-                horizontalArrangement = Arrangement.End
+                    .height(50.dp),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = MaterialTheme.colorScheme.primary
+                )
             ) {
-                IconButton(
-                    onClick = { expenseViewModel.saveExpense() },
-                    modifier = Modifier.size(56.dp),
-                    colors = IconButtonDefaults.iconButtonColors(
-                        containerColor = MaterialTheme.colorScheme.primaryContainer
-                    ),
-                    shape = shape.medium
-                ) {
-                    Icon(
-                        imageVector = Icons.Filled.Add,
-                        contentDescription = stringResource(R.string.btn_add_expense)
-                    )
-                }
+                Icon(Icons.Filled.Add, contentDescription = "Agregar")
+                Spacer(Modifier.size(ButtonDefaults.IconSpacing))
+                Text("Agregar Gasto")
             }
+        }
+    }
+
+    if (showDatePickerDialog) {
+        DatePickerDialog(
+            onDismissRequest = { showDatePickerDialog = false },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        showDatePickerDialog = false
+                        datePickerState.selectedDateMillis?.let { millis ->
+                            val formatter = DateTimeFormatter.ofPattern("dd/MM/yyyy", Locale("es", "CL"))
+                            val newDate = Instant.ofEpochMilli(millis)
+                                .atZone(ZoneId.systemDefault())
+                                .toLocalDate()
+                                .format(formatter)
+                            expenseViewModel.updateNewExpenseDate(newDate)
+                        }
+                    }
+                ) { Text("Aceptar") }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDatePickerDialog = false }) { Text("Cancelar") }
+            }
+        ) {
+            DatePicker(state = datePickerState)
         }
     }
 }

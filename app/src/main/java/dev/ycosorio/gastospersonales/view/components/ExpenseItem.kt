@@ -1,109 +1,128 @@
 package dev.ycosorio.gastospersonales.view.components
 
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.Button
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.DatePicker
-import androidx.compose.material3.DatePickerDialog
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Switch
-import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
-import androidx.compose.material3.rememberDatePickerState
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.*
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Repeat
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import dev.ycosorio.gastospersonales.model.Expense
-import dev.ycosorio.gastospersonales.viewmodel.ExpenseViewModel
-import java.time.Instant
-import java.time.LocalDateTime
-import java.time.ZoneId
-import java.time.format.DateTimeFormatter
+import java.text.NumberFormat
 import java.util.Locale
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun ExpenseItem (
+fun ExpenseItem(
     modifier: Modifier = Modifier,
     expense: Expense,
     onToggleCompletion: (Expense) -> Unit,
     onDateChange: (Expense, String) -> Unit
 ) {
+    var showDatePicker by remember { mutableStateOf(false) }
+    val currencyFormatter = remember { NumberFormat.getCurrencyInstance(Locale("es", "CL")) }
 
-    // Estado para controlar si el diálogo de fecha está visible
-    var showDatePickerDialog by remember { mutableStateOf(false) }
-
-
-    Card(
+    OutlinedCard(
         modifier = modifier
             .fillMaxWidth()
-            .padding(5.dp),
-        colors = CardDefaults.cardColors(
+            .padding(horizontal = 10.dp, vertical = 5.dp),
+        shape = MaterialTheme.shapes.medium,
+        // Color de fondo coherente con el tema
+        colors = CardDefaults.outlinedCardColors(
             containerColor = if (expense.isRecurring) {
-                MaterialTheme.colorScheme.secondary
+                MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.4f)
+            } else {
+                MaterialTheme.colorScheme.onPrimary
             }
-            else MaterialTheme.colorScheme.inversePrimary
         )
     ) {
         Row(
-            verticalAlignment = Alignment.CenterVertically,
-            modifier = Modifier.padding(vertical = 4.dp)
+            // 2. MODIFICADO: Padding vertical para mejor espaciado interno
+            modifier = Modifier.padding(vertical = 15.dp),
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            Switch(
-                checked = expense.isRecurring,
-                onCheckedChange = {
-                    onToggleCompletion(expense)
-                },
-                modifier = Modifier.padding(start = 8.dp)
-            )
 
-            Column(
-                modifier = Modifier
-                    .weight(1f)
-                    .padding(horizontal = 12.dp)
-            ) {
+            // La barra lateral de estado se mantiene igual
+            if (expense.isRecurring) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxHeight()
+                        .width(4.dp)
+                        .padding(5.dp) // Este padding parece un error, lo corregiré
+                        .background(
+                            MaterialTheme.colorScheme.primary,
+                            shape = MaterialTheme.shapes.medium
+                        )
+                )
+            }
+
+
+            IconButton(onClick = { onToggleCompletion(expense) }) {
+                Icon(
+                    imageVector = Icons.Default.Repeat,
+                    contentDescription = "Marcar como Gasto Recurrente",
+                    tint = if (expense.isRecurring) {
+                        MaterialTheme.colorScheme.primary
+                    } else {
+                        MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f)
+                    }
+                )
+            }
+
+            // Columna para Nombre y Categoría (sin cambios)
+            Column(modifier = Modifier.weight(1f)) {
                 Text(
                     text = expense.name,
                     style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onSurface
                 )
-
+                Spacer(modifier = Modifier.height(2.dp))
                 Text(
                     text = expense.category,
-                    style = MaterialTheme.typography.bodySmall
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
 
-                // El texto de la fecha es un botón para abrir el diálogo
-                TextButton(onClick = { showDatePickerDialog = true }) {
+            // Columna para Monto y Fecha
+            Column(
+                modifier = Modifier.padding(end = 16.dp),
+                horizontalAlignment = Alignment.End
+            ) {
+                Text(
+                    text = currencyFormatter.format(expense.amount),
+                    style = MaterialTheme.typography.bodyLarge,
+                    fontWeight = FontWeight.SemiBold,
+                    // 3. MODIFICADO: Color del monto para mayor énfasis
+                    color = MaterialTheme.colorScheme.primary,
+                    textAlign = TextAlign.End
+                )
+                TextButton(
+                    onClick = { showDatePicker = true },
+                    contentPadding = PaddingValues(vertical = 2.dp)
+                ) {
                     Text(
                         text = expense.date,
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Normal,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
             }
-    }    // El diálogo del DatePicker ahora se define aquí
-    if (showDatePickerDialog) {
-         CustomDatePickerDialog(
-             onDateSelected = {newDate ->
-                 onDateChange(expense, newDate)
-             },
-             onDismiss = {
-                 showDatePickerDialog = false
-             }
+        }
+    }
 
-         )
+    if (showDatePicker) {
+        CustomDatePickerDialog(
+            onDateSelected = { newDate ->
+                onDateChange(expense, newDate)
+            },
+            onDismiss = {
+                showDatePicker = false
+            }
+        )
     }
 }

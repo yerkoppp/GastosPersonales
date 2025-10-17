@@ -21,11 +21,11 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SwipeToDismissBox
-import androidx.compose.material3.SwipeToDismissBoxDefaults
 import androidx.compose.material3.SwipeToDismissBoxState
 import androidx.compose.material3.SwipeToDismissBoxValue
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.rememberSwipeToDismissBoxState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -47,6 +47,8 @@ import dev.ycosorio.gastospersonales.view.components.AddExpenseBar
 import dev.ycosorio.gastospersonales.view.components.ExpenseItem
 import dev.ycosorio.gastospersonales.viewmodel.ExpenseViewModel
 import kotlinx.coroutines.delay
+import java.text.NumberFormat
+import java.util.Locale
 
 @Preview
 @OptIn(ExperimentalMaterial3Api::class)
@@ -54,15 +56,27 @@ import kotlinx.coroutines.delay
 fun ExpenseListScreen(
     expenseViewModel: ExpenseViewModel = viewModel()
 ) {
-
     val uiState by expenseViewModel.uiState.collectAsStateWithLifecycle()
+    val currencyFormatter = remember { NumberFormat.getCurrencyInstance(Locale("es", "CL")) }
 
     Scaffold(
         topBar = {
+            // ESTA ES LA TOPAPPBAR MODIFICADA
             TopAppBar(
                 title = {
-                    Text(text = "Gastos Personales")
-                }
+                    Column {
+                        Text(text = "Gastos Personales")
+                        Text(
+                            text = "Total: ${currencyFormatter.format(uiState.totalExpenses)}",
+                            style = MaterialTheme.typography.titleSmall,
+                            color = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.8f)
+                        )
+                    }
+                },
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = MaterialTheme.colorScheme.primary,
+                    titleContentColor = MaterialTheme.colorScheme.onPrimary
+                )
             )
         }) { innerPadding ->
 
@@ -70,33 +84,10 @@ fun ExpenseListScreen(
             Modifier
                 .fillMaxSize()
                 .padding(innerPadding)
+                .background(MaterialTheme.colorScheme.background) // Fondo coherente con el tema
         ) {
-
             AddExpenseBar(expenseViewModel, uiState)
-            LazyColumn(
-                modifier = Modifier
-                    .background(MaterialTheme.colorScheme.background)
-            ) {
-                items(
-                    items = uiState.expenses,
-                    key = { expense -> expense.id }
-                ) { expense ->
-                    SwipeToDeleteContainer(
-                        item = expense,
-                        onDelete = { expenseToDelete -> expenseViewModel.removeExpense(expenseToDelete) }
-                    ) { item ->
-                        ExpenseItem(expense = item,
-                            onToggleCompletion = { expenseToToggle ->
-                                expenseViewModel.toggleExpenseCompletion(expenseToToggle)
-                            },
-                            onDateChange = { expenseToUpdate, newDate ->
-                                expenseViewModel.updateNewExpenseDate(expenseToUpdate,newDate)
-                            }
-                        )
-                    }
-                }
-            }
-            // Muestra el mensaje solo si la lista está vacía
+
             if (uiState.expenses.isEmpty()) {
                 Box(
                     Modifier
@@ -107,15 +98,41 @@ fun ExpenseListScreen(
                     Text(
                         text = stringResource(R.string.lc_add_expense),
                         Modifier.padding(16.dp),
-                        textAlign = TextAlign.Center
+                        textAlign = TextAlign.Center,
+                        style = MaterialTheme.typography.bodyLarge,
+                        color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f)
                     )
+                }
+            } else {
+                LazyColumn(
+                    modifier = Modifier.fillMaxSize()
+                ) {
+                    items(
+                        items = uiState.expenses,
+                        key = { expense -> expense.id }
+                    ) { expense ->
+                        SwipeToDeleteContainer(
+                            item = expense,
+                            onDelete = { expenseToDelete -> expenseViewModel.removeExpense(expenseToDelete) }
+                        ) { item ->
+                            ExpenseItem(
+                                expense = item,
+                                onToggleCompletion = { expenseToToggle ->
+                                    expenseViewModel.toggleExpenseCompletion(expenseToToggle)
+                                },
+                                onDateChange = { expenseToUpdate, newDate ->
+                                    expenseViewModel.updateNewExpenseDate(expenseToUpdate, newDate)
+                                }
+                            )
+                        }
+                    }
                 }
             }
         }
     }
 }
 
-
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun <T> SwipeToDeleteContainer(
     item: T,
@@ -124,25 +141,22 @@ fun <T> SwipeToDeleteContainer(
     content: @Composable (T) -> Unit
 ) {
     var isRemoved by remember { mutableStateOf(false) }
-
-    val dismissState =
-        rememberSwipeToDismissBoxState(
-            initialValue = SwipeToDismissBoxValue.Settled,
-            positionalThreshold = SwipeToDismissBoxDefaults.positionalThreshold
-        )
+    val dismissState = rememberSwipeToDismissBoxState(
+        confirmValueChange = {
+            if (it == SwipeToDismissBoxValue.EndToStart) {
+                isRemoved = true
+                true
+            } else {
+                false
+            }
+        }
+    )
 
     LaunchedEffect(key1 = isRemoved) {
         if (isRemoved) {
             delay(animationDuration.toLong())
             onDelete(item)
         }
-    }
-
-    LaunchedEffect(key1 = dismissState.targetValue) {
-        if (dismissState.targetValue == SwipeToDismissBoxValue.EndToStart) {
-            isRemoved = true
-        }
-
     }
 
     AnimatedVisibility(
@@ -154,25 +168,24 @@ fun <T> SwipeToDeleteContainer(
     ) {
         SwipeToDismissBox(
             state = dismissState,
-            backgroundContent = {
-                DeleteBackground(swipeDismissState = dismissState)
-            },
+            backgroundContent = { DeleteBackground(swipeDismissState = dismissState) },
             content = { content(item) },
             enableDismissFromStartToEnd = false,
         )
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun DeleteBackground(
     swipeDismissState: SwipeToDismissBoxState
 ) {
     val color by animateColorAsState(
         when (swipeDismissState.targetValue) {
-            SwipeToDismissBoxValue.Settled -> Color.White
-            SwipeToDismissBoxValue.StartToEnd -> Color.Green
-            SwipeToDismissBoxValue.EndToStart -> Color.Red
-        }, label = ""
+            SwipeToDismissBoxValue.Settled -> Color.Transparent
+            SwipeToDismissBoxValue.StartToEnd -> Color.Transparent
+            SwipeToDismissBoxValue.EndToStart -> Color.Red.copy(alpha = 0.8f)
+        }, label = "DeleteBackgroundColor"
     )
 
     Box(
@@ -184,11 +197,8 @@ fun DeleteBackground(
     ) {
         Icon(
             imageVector = Icons.Default.Delete,
-            contentDescription = null,
-            tint = Color.LightGray
+            contentDescription = "Eliminar",
+            tint = Color.White
         )
     }
 }
-
-
-
