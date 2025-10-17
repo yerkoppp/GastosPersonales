@@ -1,8 +1,6 @@
 package dev.ycosorio.gastospersonales.model
 
-import androidx.compose.ui.platform.LocalAutofill
 import java.time.LocalDate
-import java.time.LocalDateTime
 import java.util.UUID
 
 data class Expense (

@@ -19,11 +19,41 @@ class ExpenseViewModel: ViewModel() {
         }
     }
 
-    fun updateNewExpenseAmount(newAmount: String, ){
+    fun updateNewExpenseAmount(newAmount: String){
         _uiState.update { currentState ->
-            // Convertimos el String a Double de forma segura.
-            val amountAsDouble = newAmount.toDoubleOrNull() ?: 0.0
-            currentState.copy(newExpenseAmount = amountAsDouble)
+            // Remover formato (puntos de miles) para procesar
+            val cleanAmount = newAmount.replace(".", "").replace(",", ".")
+
+            // Validar que solo contenga dígitos y máximo una coma/punto
+            val isValid = cleanAmount.isEmpty() ||
+                    (cleanAmount.matches(Regex("^\\d*[,.]?\\d{0,2}$")))
+
+            if (isValid) {
+                val amountAsDouble = cleanAmount.toDoubleOrNull() ?: 0.0
+
+                // Formatear con separador de miles para mostrar
+                val formattedText = if (cleanAmount.isEmpty() || amountAsDouble == 0.0) {
+                    cleanAmount
+                } else {
+                    val parts = cleanAmount.split(Regex("[,.]"))
+                    val integerPart = parts[0].toLongOrNull() ?: 0L
+                    val decimalPart = if (parts.size > 1) parts[1] else ""
+
+                    val formatted = "%,d".format(java.util.Locale("es", "CL"), integerPart)
+                    if (cleanAmount.contains(",") || cleanAmount.contains(".")) {
+                        "$formatted,$decimalPart"
+                    } else {
+                        formatted
+                    }
+                }
+
+                currentState.copy(
+                    newExpenseAmount = amountAsDouble,
+                    newExpenseAmountText = formattedText
+                )
+            } else {
+                currentState
+            }
         }
     }
 
@@ -61,7 +91,7 @@ class ExpenseViewModel: ViewModel() {
             val category = currentState.newExpenseCategory
             val date = currentState.newExpenseDate
 
-            if(name.isNotBlank() && !amount.isNaN()){
+            if(name.isNotBlank() && amount > 0.0){
                 val newExpense = Expense (
                     name = name,
                     amount = amount,
@@ -74,6 +104,7 @@ class ExpenseViewModel: ViewModel() {
                     expenses = updatedExpenses,
                     newExpenseName = "",
                     newExpenseAmount= 0.00,
+                    newExpenseAmountText = "",
                     newExpenseDate = LocalDateTime.now().format(DateTimeFormatter.ofPattern("dd/MM/yyyy")),
                     newExpenseCategory = currentState.categories.first(),
                 )
@@ -110,6 +141,7 @@ class ExpenseViewModel: ViewModel() {
         val expenses: List<Expense> = emptyList(),
         val newExpenseName: String = "",
         val newExpenseAmount: Double = 0.00,
+        val newExpenseAmountText: String = "",
         val categories: List<String> = listOf(
             "🍔 Alimentación",
             "🚌 Transporte",
